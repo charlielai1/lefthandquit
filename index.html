@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tracker</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; margin: 0; overflow: hidden;
+    background: #0a0a0a; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+  }
+  .app { display: flex; height: 100vh; height: 100dvh; gap: 6px; padding: 6px; }
+
+  /* LEFT control column */
+  .left { display: flex; flex-direction: column; width: 66px; gap: 6px; flex-shrink: 0; }
+  .log-btn {
+    flex: 3; border: none; border-radius: 18px; background: #b9975b; color: #fff;
+    font-weight: 800; font-size: 13px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+    line-height: 1.1; transition: transform .1s;
+  }
+  .log-btn .icon { font-size: 26px; }
+  .log-btn:active { transform: scale(.95); }
+
+  .small-btn {
+    flex: 0.5; border: none; border-radius: 12px; background: #262626; color: #eee;
+    font-weight: 700; font-size: 10px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px; cursor: pointer;
+    transition: transform .1s;
+  }
+  .small-btn .icon { font-size: 15px; }
+  .small-btn.deferred { color: #e7c98b; }
+  .small-btn:active { transform: scale(.95); }
+
+  /* RIGHT heatmap */
+  .grid-wrap { flex: 1; min-width: 0; background: #171717; border: 1px solid #262626;
+    border-radius: 18px; padding: 6px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 22px repeat(7, 1fr);
+    grid-template-rows: auto repeat(24, 1fr) auto;
+    gap: 2px; height: 100%;
+  }
+  .hcell { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    line-height: 1; text-align: center; }
+  .hcell .lab { font-size: 10px; font-weight: 800; }
+  .hcell .dt { font-size: 8px; color: #737373; }
+  .today .lab { color: #e7c98b; }
+
+  .rowlab { display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 2px; font-size: 8px; color: #737373; font-weight: 600; }
+
+  .cell { border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; cursor: pointer; transition: transform .08s; min-height: 0; }
+  .cell:active { transform: scale(.85); }
+  .l0 { background: #262626; color: #525252; }
+  .l1 { background: #fef3c7; color: #171717; }
+  .l2 { background: #fcd34d; color: #171717; }
+  .l3 { background: #d97706; color: #fff; }
+  .l4 { background: #78350f; color: #fff; }
+
+  .totlab { display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 2px; font-size: 9px; color: #737373; font-weight: 700; }
+  .tot { background: #262626; border-radius: 4px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 900; color: #e7c98b; }
+
+  .corner { position: relative; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #525252; cursor: pointer; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #fff; color: #171717; padding: 8px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; z-index: 100; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Overlay / sheet */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); opacity: 0; pointer-events: none;
+    transition: .2s; z-index: 90; }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #171717;
+    border-top: 1px solid #333; border-radius: 26px 26px 0 0; padding: 16px;
+    transform: translateY(100%); transition: transform .28s cubic-bezier(.2,.8,.2,1); z-index: 95; }
+  .sheet.show { transform: translateY(0); }
+  .sheet h3 { margin: 0 0 12px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .sheet .close { background: none; border: none; color: #999; font-size: 20px; cursor: pointer; }
+  .hgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .hbtn { background: #262626; border: none; border-radius: 10px; color: #eee;
+    font-size: 12px; font-weight: 700; padding: 12px 0; cursor: pointer; }
+  .hbtn:active { background: #b9975b; color: #fff; }
+
+  /* Confirm dialog */
+  .dialog { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    padding: 24px; z-index: 96; }
+  .dialog.show { display: flex; }
+  .dialog .box { background: #171717; border: 1px solid #333; border-radius: 24px; padding: 22px; max-width: 320px; width: 100%; }
+  .dialog h4 { margin: 0 0 8px; font-size: 17px; }
+  .dialog p { margin: 0 0 18px; color: #a3a3a3; font-size: 13px; }
+  .dialog .row { display: flex; gap: 10px; }
+  .dialog button { flex: 1; border: none; border-radius: 12px; padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-cancel { background: #262626; color: #eee; }
+  .btn-reset { background: #ef4444; color: #fff; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- LEFT: big log (75%) + two small buttons -->
+    <div class="left">
+      <button class="log-btn" id="logNow">
+        <span class="icon">+</span>
+        <span>LOG<br>NOW</span>
+      </button>
+      <button class="small-btn deferred" id="deferredBtn">
+        <span class="icon">🕐</span>
+        <span>Defer</span>
+      </button>
+      <button class="small-btn" id="undoBtn">
+        <span class="icon">↶</span>
+        <span>Undo</span>
+      </button>
+    </div>
+
+    <!-- RIGHT: 7x24 heatmap, no scroll -->
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Deferred hour picker -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="sheet">
+    <h3>Deferred — pick hour (today) <button class="close" id="sheetClose">✕</button></h3>
+    <div class="hgrid" id="hourGrid"></div>
+  </div>
+
+  <!-- Reset confirm -->
+  <div class="dialog" id="resetDialog">
+    <div class="box">
+      <h4>Reset everything?</h4>
+      <p>This deletes all logged entries and cannot be undone.</p>
+      <div class="row">
+        <button class="btn-cancel" id="resetCancel">Cancel</button>
+        <button class="btn-reset" id="resetOk">Reset</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const pad = n => n < 10 ? "0" + n : "" + n;
+  const dateKey = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
+  const cellKey = (dk, h) => dk + "_" + pad(h);
+
+  // Build 7 days: TODAY first (leftmost), going back in time to the right
+  function buildDays() {
+    const today = new Date(), out = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today); d.setDate(today.getDate() - i);
+      let label = i + "d";
+      if (i === 0) label = "Today";
+      else if (i === 1) label = "Yest";
+      out.push({ key: dateKey(d), label, dt: pad(d.getMonth()+1) + "/" + pad(d.getDate()) });
+    }
+    return out; // today at index 0 => left
+  }
+  const DAYS = buildDays();
+
+  // State (with best-effort persistence)
+  let records = {}, history = [];
+  try {
+    records = JSON.parse(localStorage.getItem("smk_records") || "{}");
+    history = JSON.parse(localStorage.getItem("smk_history") || "[]");
+  } catch (e) {}
+  function save() {
+    try {
+      localStorage.setItem("smk_records", JSON.stringify(records));
+      localStorage.setItem("smk_history", JSON.stringify(history));
+    } catch (e) {}
+  }
+
+  const getCount = (dk, h) => records[cellKey(dk, h)] || 0;
+  function levelClass(c) {
+    if (c >= 4) return "l4"; if (c === 3) return "l3";
+    if (c === 2) return "l2"; if (c === 1) return "l1"; return "l0";
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 1300);
+  }
+
+  function addRecord(dk, h, msg) {
+    const k = cellKey(dk, h);
+    records[k] = (records[k] || 0) + 1;
+    history.push(k); save(); render();
+    if (msg) toast(msg);
+  }
+  function undo() {
+    if (!history.length) return toast("Nothing to undo");
+    const k = history.pop();
+    records[k] = (records[k] || 0) - 1;
+    if (records[k] <= 0) delete records[k];
+    save(); render(); toast("Undo complete");
+  }
+  function reset() { records = {}; history = []; save(); render(); toast("Reset complete"); }
+
+  function render() {
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+
+    // corner (top-left) = reset shortcut
+    const corner = document.createElement("div");
+    corner.className = "corner"; corner.textContent = "↺";
+    corner.title = "Reset";
+    corner.onclick = () => document.getElementById("resetDialog").classList.add("show");
+    grid.appendChild(corner);
+
+    // header row: days (today leftmost)
+    DAYS.forEach((d, i) => {
+      const h = document.createElement("div");
+      h.className = "hcell" + (i === 0 ? " today" : "");
+      h.innerHTML = '<div class="lab">' + d.label + '</div><div class="dt">' + d.dt + '</div>';
+      grid.appendChild(h);
+    });
+
+    // 24 hour rows
+    for (let hr = 0; hr < 24; hr++) {
+      const rl = document.createElement("div");
+      rl.className = "rowlab"; rl.textContent = pad(hr);
+      grid.appendChild(rl);
+
+      DAYS.forEach(d => {
+        const c = getCount(d.key, hr);
+        const cell = document.createElement("div");
+        cell.className = "cell " + levelClass(c);
+        cell.textContent = c > 0 ? c : "";
+        cell.onclick = () => addRecord(d.key, hr, "Added +1");
+        grid.appendChild(cell);
+      });
+    }
+
+    // totals row
+    const tl = document.createElement("div");
+    tl.className = "totlab"; tl.textContent = "Σ";
+    grid.appendChild(tl);
+    DAYS.forEach(d => {
+      let t = 0; for (let h = 0; h < 24; h++) t += getCount(d.key, h);
+      const cell = document.createElement("div");
+      cell.className = "tot"; cell.textContent = t;
+      grid.appendChild(cell);
+    });
+  }
+
+  // Deferred hour picker
+  function buildHourGrid() {
+    const hg = document.getElementById("hourGrid");
+    hg.innerHTML = "";
+    for (let h = 0; h < 24; h++) {
+      const b = document.createElement("button");
+      b.className = "hbtn"; b.textContent = pad(h) + "h";
+      b.onclick = () => {
+        addRecord(dateKey(new Date()), h, "Added deferred +1");
+        closeSheet();
+      };
+      hg.appendChild(b);
+    }
+  }
+  function openSheet() {
+    document.getElementById("overlay").classList.add("show");
+    document.getElementById("sheet").classList.add("show");
+  }
+  function closeSheet() {
+    document.getElementById("overlay").classList.remove("show");
+    document.getElementById("sheet").classList.remove("show");
+  }
+
+  // Wire up
+  document.getElementById("logNow").onclick = () => {
+    const now = new Date();
+    addRecord(dateKey(now), now.getHours(), "Logged +1 now");
+  };
+  document.getElementById("deferredBtn").onclick = openSheet;
+  document.getElementById("undoBtn").onclick = undo;
+  document.getElementById("sheetClose").onclick = closeSheet;
+  document.getElementById("overlay").onclick = closeSheet;
+  document.getElementById("resetCancel").onclick = () =>
+    document.getElementById("resetDialog").classList.remove("show");
+  document.getElementById("resetOk").onclick = () => {
+    reset(); document.getElementById("resetDialog").classList.remove("show");
+  };
+
+  buildHourGrid();
+  render();
+</script>
+</body>
+</html>
