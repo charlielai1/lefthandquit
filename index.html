@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Left-Handed Smoking Tracker Prototype</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: rgba(255, 255, 255, 0.92);
+      --ink: #1f2428;
+      --muted: #8c8f94;
+      --line: #e8e1d3;
+
+      --gold: #b9975b;
+      --gold-soft: #efe4cf;
+      --gold-light: #f8f2e7;
+      --gold-dark: #8a6a36;
+
+      --silver: #c9ccd1;
+      --silver-soft: #f3f4f5;
+
+      --sleep: #f1f2f3;
+      --sleep-text: #b6b8bc;
+
+      --shadow: 0 18px 45px rgba(33, 37, 41, 0.08);
+      --gold-shadow: 0 18px 45px rgba(185, 151, 91, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(185, 151, 91, 0.07) 0%, transparent 34%),
+        linear-gradient(315deg, rgba(201, 204, 209, 0.20) 0%, transparent 38%),
+        #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.42;
+      background-image:
+        linear-gradient(30deg, rgba(185, 151, 91, 0.12) 12%, transparent 12.5%, transparent 87%, rgba(185, 151, 91, 0.12) 87.5%, rgba(185, 151, 91, 0.12)),
+        linear-gradient(150deg, rgba(185, 151, 91, 0.12) 12%, transparent 12.5%, transparent 87%, rgba(185, 151, 91, 0.12) 87.5%, rgba(185, 151, 91, 0.12)),
+        linear-gradient(30deg, rgba(185, 151, 91, 0.12) 12%, transparent 12.5%, transparent 87%, rgba(185, 151, 91, 0.12) 87.5%, rgba(185, 151, 91, 0.12)),
+        linear-gradient(150deg, rgba(185, 151, 91, 0.12) 12%, transparent 12.5%, transparent 87%, rgba(185, 151, 91, 0.12) 87.5%, rgba(185, 151, 91, 0.12));
+      background-size: 88px 154px;
+      background-position: 0 0, 0 0, 44px 77px, 44px 77px;
+      mask-image: radial-gradient(circle at top right, black, transparent 62%);
+      -webkit-mask-image: radial-gradient(circle at top right, black, transparent 62%);
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .left-rail {
+      position: sticky;
+      top: 18px;
+      height: calc(100vh - 36px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .quick-log {
+      flex: 1;
+      border: 1px solid rgba(185, 151, 91, 0.45);
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 24%),
+        linear-gradient(180deg, #d8bf87, #a47e3f);
+      color: white;
+      box-shadow: var(--gold-shadow);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .quick-log span {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      transform: rotate(-90deg);
+      white-space: nowrap;
+      font-size: 20px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .quick-log:active {
+      transform: scale(0.97);
+      filter: brightness(0.97);
+      box-shadow: 0 10px 25px rgba(185, 151, 91, 0.22);
+    }
+
+    .rail-small-btn {
+      border: 1px solid rgba(185, 151, 91, 0.28);
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, #ffffff, #f8f6f1);
+      color: var(--gold-dark);
+      box-shadow: var(--shadow);
+      padding: 14px 8px;
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+      min-height: 74px;
+    }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .header {
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 246, 241, 0.92));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(185, 151, 91, 0.22);
+      border-radius: 30px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::after {
+      content: "";
+      position: absolute;
+      right: -60px;
+      top: -80px;
+      width: 220px;
+      height: 220px;
+      border: 1px solid rgba(185, 151, 91, 0.22);
+      border-radius: 50%;
+    }
+
+    .title-block {
+      position: relative;
+      z-index: 1;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+
+    .title-block p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .header-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill-btn {
+      border: 1px solid rgba(185, 151, 91, 0.26);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      padding: 9px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 750;
+      font-size: 12px;
+    }
+
+    .pill-btn.danger {
+      color: #9a4e33;
+    }
+
+    .panel {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(253, 252, 249, 0.93));
+      border: 1px solid rgba(185, 151, 91, 0.18);
+      border-radius: 30px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .heatmap-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .heatmap {
+      min-width: 680px;
+      display: grid;
+      grid-template-columns: 56px repeat(7, 1fr);
+      gap: 5px;
+      align-items: stretch;
+    }
+
+    .corner {
+      height: 42px;
+    }
+
+    .day-head {
+      height: 42px;
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, #ffffff, var(--gold-light));
+      border: 1px solid rgba(185, 151, 91, 0.18);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+
+    .day-head .day-name {
+      font-size: 12px;
+      font-weight: 850;
+      color: var(--ink);
+    }
+
+    .day-head .date {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .hour-label {
+      height: 26px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 8px;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 750;
+    }
+
+    .hour-label.sleep {
+      color: var(--sleep-text);
+    }
+
+    .cell {
+      height: 26px;
+      border-radius: 9px;
+      background: #fbfaf7;
+      border: 1px solid rgba(232, 225, 211, 0.86);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 850;
+      color: rgba(31, 36, 40, 0.72);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .cell.sleep {
+      background: var(--sleep);
+      border-color: #e6e7e8;
+      color: #aaa;
+    }
+
+    .cell[data-count="0"] {
+      color: transparent;
+    }
+
+    .cell.level-1 {
+      background: #f4ead5;
+      border-color: rgba(185, 151, 91, 0.20);
+    }
+
+    .cell.level-2 {
+      background: #e5cc91;
+      border-color: rgba(185, 151, 91, 0.32);
+    }
+
+    .cell.level-3 {
+      background: #bf9850;
+      border-color: rgba(138, 106, 54, 0.38);
+      color: white;
+    }
+
+    .cell.level-4 {
+      background: linear-gradient(135deg, #a77d35, #6f5329);
+      border-color: rgba(111, 83, 41, 0.42);
+      color: white;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    .cell:hover {
+      transform: scale(1.05);
+      z-index: 2;
+      box-shadow: 0 8px 18px rgba(31, 36, 40, 0.14);
+    }
+
+    .daily-total {
+      min-width: 680px;
+      display: grid;
+      grid-template-columns: 56px repeat(7, 1fr);
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .daily-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding-right: 8px;
+    }
+
+    .total-box {
+      border-radius: 15px;
+      background:
+        linear-gradient(180deg, #ffffff, #fbf7ee);
+      border: 1px solid rgba(185, 151, 91, 0.24);
+      min-height: 42px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+
+    .total-box .num {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--gold-dark);
+    }
+
+    .total-box .label {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+      font-weight: 800;
+    }
+
+    .hour-summary {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+
+    .hour-card {
+      border-radius: 17px;
+      background:
+        linear-gradient(180deg, #ffffff, var(--gold-light));
+      border: 1px solid rgba(185, 151, 91, 0.15);
+      padding: 10px;
+      min-height: 58px;
+    }
+
+    .hour-card.sleep {
+      background: linear-gradient(180deg, #ffffff, var(--silver-soft));
+      border-color: rgba(201, 204, 209, 0.35);
+      color: #8d8d8d;
+    }
+
+    .hour-card .hour {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--muted);
+    }
+
+    .hour-card .count {
+      margin-top: 6px;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--gold-dark);
+    }
+
+    .hour-card.sleep .count {
+      color: #9a9da2;
+    }
+
+    .toast {
+      position: fixed;
+      left: 112px;
+      bottom: 24px;
+      background: #1f2428;
+      color: white;
+      padding: 12px 15px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 750;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: 0.2s ease;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(31, 36, 40, 0.32);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 10;
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 420px;
+      background:
+        linear-gradient(180deg, #ffffff, #fbf9f4);
+      border: 1px solid rgba(185, 151, 91, 0.24);
+      border-radius: 30px;
+      padding: 20px;
+      box-shadow: 0 30px 70px rgba(31, 36, 40, 0.24);
+    }
+
+    .modal h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .modal p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 850;
+      color: var(--muted);
+    }
+
+    select {
+      width: 100%;
+      appearance: none;
+      border: 1px solid rgba(185, 151, 91, 0.22);
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 13px 14px;
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      border: none;
+      border-radius: 16px;
+      padding: 13px 12px;
+      cursor: pointer;
+      font-weight: 850;
+    }
+
+    .cancel {
+      background: var(--silver-soft);
+      color: var(--ink);
+    }
+
+    .save {
+      background: linear-gradient(180deg, #d8bf87, #a47e3f);
+      color: white;
+      box-shadow: 0 10px 22px rgba(185, 151, 91, 0.22);
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 74px 1fr;
+        padding: 12px;
+        gap: 10px;
+      }
+
+      .left-rail {
+        top: 12px;
+        height: calc(100vh - 24px);
+      }
+
+      .quick-log {
+        border-radius: 26px;
+      }
+
+      .quick-log span {
+        font-size: 17px;
+      }
+
+      .rail-small-btn {
+        font-size: 11px;
+        padding: 10px 6px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        border-radius: 26px;
+      }
+
+      .title-block h1 {
+        font-size: 20px;
+      }
+
+      .panel {
+        border-radius: 26px;
+        padding: 12px;
+      }
+
+      .hour-summary {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .toast {
+        left: 92px;
+        right: 12px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="left-rail">
+      <button class="quick-log" id="quickLogBtn">
+        <span>+1 NOW</span>
+      </button>
+      <button class="rail-small-btn" id="missedBtn">Add<br />missed</button>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="title-block">
+          <h1>Smoking Tracker</h1>
+          <p>Left-handed quick log · rolling 7 days x 24 hours</p>
+        </div>
+
+        <div class="header-actions">
+          <button class="pill-btn" id="demoBtn">Demo data</button>
+          <button class="pill-btn" id="undoBtn">Undo</button>
+          <button class="pill-btn danger" id="resetBtn">Reset</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h3 class="section-title">7-day smoking heatmap</h3>
+        <div class="heatmap-wrap">
+          <div class="heatmap" id="heatmap"></div>
+          <div class="daily-total" id="dailyTotal"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3 class="section-title">Weekly pattern by hour</h3>
+        <div class="hour-summary" id="hourSummary"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2>Add missed record</h2>
+      <p>Select the day and hour you smoked but forgot to log.</p>
+
+      <div class="field">
+        <label for="daySelect">Day</label>
+        <select id="daySelect"></select>
+      </div>
+
+      <div class="field">
+        <label for="hourSelect">Hour</label>
+        <select id="hourSelect"></select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="cancel" id="cancelModalBtn">Cancel</button>
+        <button class="save" id="saveMissedBtn">Add +1</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Logged</div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const heatmap = document.getElementById("heatmap");
+      const dailyTotal = document.getElementById("dailyTotal");
+      const hourSummary = document.getElementById("hourSummary");
+      const quickLogBtn = document.getElementById("quickLogBtn");
+      const missedBtn = document.getElementById("missedBtn");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const cancelModalBtn = document.getElementById("cancelModalBtn");
+      const saveMissedBtn = document.getElementById("saveMissedBtn");
+      const daySelect = document.getElementById("daySelect");
+      const hourSelect = document.getElementById("hourSelect");
+      const toast = document.getElementById("toast");
+      const undoBtn = document.getElementById("undoBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const demoBtn = document.getElementById("demoBtn");
+
+      let records = {};
+      let history = [];
+
+      function pad(num) {
+        return String(num).padStart(2, "0");
+      }
+
+      function getDateKey(date) {
+        const y = date.getFullYear();
+        const m = pad(date.getMonth() + 1);
+        const d = pad(date.getDate());
+        return y + "-" + m + "-" + d;
+      }
+
+      function getRollingDays() {
+        const days = [];
+        const today = new Date();
+
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+
+          let label = i + " days ago";
+          if (i === 0) label = "Today";
+          if (i === 1) label = "Yesterday";
+
+          days.push({
+            offset: i,
+            date: d,
+            key: getDateKey(d),
+            label: label,
+            shortDate: pad(d.getMonth() + 1) + "/" + pad(d.getDate())
+          });
+        }
+
+        return days;
+      }
+
+      function isSleepHour(hour) {
+        return hour <= 6 || hour >= 23;
+      }
+
+      function getCellKey(dayKey, hour) {
+        return dayKey + "_" + pad(hour);
+      }
+
+      function getCount(dayKey, hour) {
+        return records[getCellKey(dayKey, hour)] || 0;
+      }
+
+      function addRecord(dayKey, hour, source) {
+        const key = getCellKey(dayKey, hour);
+        records[key] = (records[key] || 0) + 1;
+        history.push({ key: key, source: source || "manual" });
+        render();
+      }
+
+      function removeLastRecord() {
+        const last = history.pop();
+
+        if (!last) {
+          showToast("Nothing to undo");
+          return;
+        }
+
+        if (records[last.key]) {
+          records[last.key] -= 1;
+          if (records[last.key] <= 0) {
+            delete records[last.key];
+          }
+        }
+
+        render();
+        showToast("Last record removed");
+      }
+
+      function getLevel(count) {
+        if (count <= 0) return "";
+        if (count === 1) return "level-1";
+        if (count === 2) return "level-2";
+        if (count === 3) return "level-3";
+        return "level-4";
+      }
+
+      function renderHeatmap(days) {
+        heatmap.innerHTML = "";
+
+        const corner = document.createElement("div");
+        corner.className = "corner";
+        heatmap.appendChild(corner);
+
+        days.forEach(function (day) {
+          const head = document.createElement("div");
+          head.className = "day-head";
+
+          const dayName = document.createElement("div");
+          dayName.className = "day-name";
+          dayName.textContent = day.label;
+
+          const date = document.createElement("div");
+          date.className = "date";
+          date.textContent = day.shortDate;
+
+          head.appendChild(dayName);
+          head.appendChild(date);
+          heatmap.appendChild(head);
+        });
+
+        for (let hour = 0; hour < 24; hour++) {
+          const hourLabel = document.createElement("div");
+          hourLabel.className = "hour-label" + (isSleepHour(hour) ? " sleep" : "");
+          hourLabel.textContent = pad(hour) + ":00";
+          heatmap.appendChild(hourLabel);
+
+          days.forEach(function (day) {
+            const count = getCount(day.key, hour);
+            const cell = document.createElement("div");
+            cell.className = "cell" + (isSleepHour(hour) ? " sleep" : "") + " " + getLevel(count);
+            cell.dataset.count = count;
+            cell.title = day.label + ", " + pad(hour) + ":00 - " + count + " cigarette(s)";
+            cell.textContent = count > 0 ? String(count) : "0";
+
+            cell.addEventListener("click", function () {
+              addRecord(day.key, hour, "cell");
+              showToast("Added +1 to " + day.label + " " + pad(hour) + ":00");
+            });
+
+            heatmap.appendChild(cell);
+          });
+        }
+      }
+
+      function renderDailyTotal(days) {
+        dailyTotal.innerHTML = "";
+
+        const label = document.createElement("div");
+        label.className = "daily-label";
+        label.textContent = "Total";
+        dailyTotal.appendChild(label);
+
+        days.forEach(function (day) {
+          let total = 0;
+
+          for (let hour = 0; hour < 24; hour++) {
+            total += getCount(day.key, hour);
+          }
+
+          const box = document.createElement("div");
+          box.className = "total-box";
+
+          const num = document.createElement("div");
